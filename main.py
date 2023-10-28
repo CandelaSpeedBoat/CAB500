@@ -17,6 +17,7 @@ class CanInterface:
         self.channel = channel
         self.bustype = bustype
         self.bitrate = bitrate
+        self.accept_virtual = 1
 
         # TODO move to function to connect to network
         # TODO add function to disconnect network.disconnect()
