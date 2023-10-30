@@ -82,21 +82,15 @@ class CanInterface:
         # self._can_notifier.stop(timeout=1)
         self._can_bus.shutdown()
 
+def receive_can_data(can):
+    SingleCanFrame = can.Message
+    print(SingleCanFrame)
+
 
 if __name__ == '__main__':
     print_hi('Start')
     bus = CanInterface()
-    cab = CAB500()
-    msg = can.Message(
-        arbitration_id=0x600,
-        data=[0x02, 0x11, 0x01],
-        is_extended_id=False
-    )
-    try:
-        bus.ch.send(msg)
-        print(f"Message sent on {bus.ch.channel_info}")
-    except can.CanError:
-        print("Message NOT sent")
+    notifier = can.Notifier(bus.ch, [receive_can_data(can)])
     ecuResetService(0x601)
     bus.close_bus()
     print_hi('Stop')
