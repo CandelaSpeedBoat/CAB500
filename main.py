@@ -4,14 +4,15 @@ import time
 import numpy as np
 import can
 from enum import IntEnum
+import struct
 
-myList = np.arange(0x40B, 0x7F0, 1)
-
+#idList = np.arange(0x40B, 0x7F0, 1)
+idList = np.arange(0x68C, 0x68E, 1)
 
 def print_hi(name):
-    print(f'Hi, {name}')
+    print(f'Msg:, {name}')
 
-def CAB500():
+class CAB500(IntEnum):
     SINGLE_FRAME_1_BYTE = 0x01 # Frame consists of 1 msg with 1 byte of data
     SINGLE_FRAME_2_BYTE = 0x02 # Frame consists of 1 msg with 2 byte of data
     SINGLE_FRAME_3_BYTE = 0x03
@@ -21,27 +22,50 @@ def CAB500():
     SINGLE_FRAME_7_BYTE = 0x07
     SINGLE_FRAME_8_BYTE = 0x08
 
-    # def __init__(self):
+    # ECU reset function --- does not work ---
+    ecuResetMsg             = 0x11
+    ecuResetMsg_send_hard   = 0x01
+    ecuResetMsg_send_soft   = 0x03
 
-def ecuResetService(msg_id):
+    # Read data by identifier, single frame composed of 3 byte, \x03\x22\x then choose function
+    readDataById    = 0x22
+    # Read CAN ID, \x03\x22\xF0\x10, then response, then transmit flow controll \x03\x00\x00
+    canIDread1      = 0xF0
+    canIDread2      = 0x10
+    flowControl     = 0x03 # 00 00
+
+    # Frequency of filter
+    TEN_HZ          = 0x01
+    TWENTY_HZ       = 0x02
+    THIRTY_HZ       = 0x03
+    AVERAGE_TEN_MS  = 0xFF
+
+def ecuResetService(msg_id): # does not work on this version of CAB500 !!
     msg = can.Message(
         arbitration_id=msg_id,
-        data=[0x02, 0x11, 0x01],
+        data=[CAB500.SINGLE_FRAME_2_BYTE, CAB500.ecuResetMsg, CAB500.ecuResetMsg_send_soft],
         is_extended_id=False
     )
     try:
         bus.ch.send(msg)
         print(f"Message sent on {bus.ch.channel_info}")
+        print(f"Data sent: {msg}")
     except can.CanError:
         print("Message NOT sent")
 
+def readDatabyIdentifier(msg_id):
+    msg = can.Message(
+        arbitration_id=msg_id,
+        data=[CAB500.SINGLE_FRAME_3_BYTE, CAB500.readDataById, CAB500.canIDread1, CAB500.canIDread2],
+        is_extended_id=False
+    )
+    try:
+        bus.ch.send(msg)
+        print(f"Message sent on {bus.ch.channel_info}")
+        print(f"Data sent: {msg}")
+    except can.CanError:
+        print("Message NOT sent")
 
-
-    class filterFreq(IntEnum):    # Avalible filter frequencies
-        TEN_HZ          = 0x01
-        TWENTY_HZ       = 0x02
-        THIRTY_HZ       = 0x03
-        AVERAGE_TEN_MS  = 0xFF
 
 
 class CanInterface:
@@ -82,15 +106,24 @@ class CanInterface:
         # self._can_notifier.stop(timeout=1)
         self._can_bus.shutdown()
 
-def receive_can_data(can):
-    SingleCanFrame = can.Message
-    print(SingleCanFrame)
+def receive_can_data(msg):
+    data = msg.data
+    print(f"Recieved data: {msg.data}, id: {hex(msg.arbitration_id)}")
+
+    #if msg.arbitration_id == self.can_id:
+    #data_unpack = struct.unpack(">IB3x", msg.data)
+    #print(data_unpack)
 
 
 if __name__ == '__main__':
-    print_hi('Start')
+    print_hi('Start program')
     bus = CanInterface()
-    notifier = can.Notifier(bus.ch, [receive_can_data(can)])
+    notifier = can.Notifier (bus.ch, [receive_can_data])
     ecuResetService(0x601)
+
+    for id in idList:
+        ecuResetService(id)
+        time.sleep(0.01)
+
     bus.close_bus()
-    print_hi('Stop')
+    print_hi('Stop program')
