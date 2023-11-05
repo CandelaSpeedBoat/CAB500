@@ -21,6 +21,9 @@ class CAB500(IntEnum):
     SINGLE_FRAME_6_BYTE = 0x06
     SINGLE_FRAME_7_BYTE = 0x07
     SINGLE_FRAME_8_BYTE = 0x08
+    firstMessage        = 0x10
+    secondMessage       = 0x21
+    nineUseableData     = 0x09
 
     # ECU reset function --- does not work ---
     ecuResetMsg             = 0x11
@@ -33,6 +36,10 @@ class CAB500(IntEnum):
     canIDread1      = 0xF0
     canIDread2      = 0x10
     flowControl     = 0x03 # 00 00
+    canIDreadPos    = 0x62
+    canIDreadNeg    = 0x7F
+
+
 
     # Frequency of filter
     TEN_HZ          = 0x01
@@ -110,7 +117,20 @@ def receive_can_data(msg):
     data = msg.data
     print(f"Recieved data: {msg.data}, id: {hex(msg.arbitration_id)}")
 
-    #if msg.arbitration_id == self.can_id:
+    if msg.is_rx == True and msg.dlc == 8:
+        print("Message recieved and dlc=8")
+        if msg.data[0] == CAB500.firstMessage:      # First frame of message
+            if msg.data[1] == CAB500.nineUseableData:
+                if msg.data[2] == CAB500.canIDreadPos:
+                    print(f"Positive response")
+                    if msg.data[3]+msg.data[4] == CAB500.canIDread1+CAB500.canIDread2:
+                        cab500IpID = msg.data[5:7]
+                        print(cab500IpID)
+                        udsClientID = msg.data[7]
+                        print(udsClientID)
+                else:
+                    print("Negative response")
+                    exit(1)
     #data_unpack = struct.unpack(">IB3x", msg.data)
     #print(data_unpack)
 
@@ -119,10 +139,10 @@ if __name__ == '__main__':
     print_hi('Start program')
     bus = CanInterface()
     notifier = can.Notifier (bus.ch, [receive_can_data])
-    ecuResetService(0x601)
+    #ecuResetService(0x601)
 
     for id in idList:
-        ecuResetService(id)
+        readDatabyIdentifier(id)
         time.sleep(0.01)
 
     bus.close_bus()
