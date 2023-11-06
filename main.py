@@ -64,8 +64,8 @@ def ecuResetService(msg_id):  # does not work on this version of CAB500 !!
     )
     try:
         bus.ch.send(msg)
-        print(f"Message sent on {bus.ch.channel_info}")
-        print(f"Data sent: {msg}")
+        # print(f"Message sent on {bus.ch.channel_info}")
+        # print(f"Data sent: {msg}")
     except can.CanError:
         print("Message NOT sent")
 
@@ -78,13 +78,13 @@ def readDatabyIdentifier(msg_id):
     )
     try:
         bus.ch.send(msg)
-        print(f"Message sent on {bus.ch.channel_info}")
-        print(f"Data sent: {msg}")
+        # print(f"Message sent on {bus.ch.channel_info}")
+        # print(f"Data sent: {msg}")
     except can.CanError:
         print("Message NOT sent")
 
 
-def flowcontrol(msg_id):
+def flowControl(msg_id):
     msg = can.Message(
         arbitration_id=msg_id,
         data=[CAB500.flowControl, 0x00, 0x00],
@@ -92,8 +92,8 @@ def flowcontrol(msg_id):
     )
     try:
         bus.ch.send(msg)
-        print(f"Message sent on {bus.ch.channel_info}")
-        print(f"Data sent: {msg}")
+        # print(f"Message sent on {bus.ch.channel_info}")
+        # print(f"Data sent: {msg}")
     except can.CanError:
         print("Message NOT sent")
 
@@ -139,24 +139,24 @@ class CanInterface:
 def receive_can_data(msg):
     global receivedCorrectMsg, cab500IpID, udsClientID, udsServerID, receivedReadDatabyIDDone
 
-    print(f"Recieved data: {msg.data}, id: {hex(msg.arbitration_id)}")
+    # print(f"Recieved data: {msg.data}, id: {hex(msg.arbitration_id)}")
     if msg.is_rx == True and msg.dlc == 8:
-        print("Message recieved and dlc=8")
+        # print("Message recieved and dlc=8")
         if msg.data[0] == CAB500.firstMessage:  # First frame of message
             if msg.data[1] == CAB500.nineUsableData:
                 if msg.data[2] == CAB500.canIDreadPos:
-                    print(f"Positive response")
+                    # print(f"Positive response")
                     if msg.data[3] + msg.data[4] == CAB500.canIDread1 + CAB500.canIDread2:
                         receivedCorrectMsg = True
                         cab500IpID = int.from_bytes(msg.data[5:7])
-                        print(cab500IpID)
+                        # print(cab500IpID)
                         udsClientID = msg.data[7]
-                        print(udsClientID)
+                        # print(udsClientID)
                 else:
-                    print("Negative response")
+                    print("Negative response, wrong format" + msg.data)
 
         elif msg.data[0] == CAB500.secondMessage:
-            print("Second message received")
+            # print("Second message received")
             udsClientID = int.from_bytes([udsClientID, msg.data[1]])
             udsServerID = int.from_bytes(msg.data[2:4])
             receivedReadDatabyIDDone = True
@@ -175,7 +175,7 @@ if __name__ == '__main__':
         readDatabyIdentifier(id)
         time.sleep(0.01)
         if receivedCorrectMsg:
-            flowcontrol(id)
+            flowControl(id)
             time.sleep(0.01)
             break
     if receivedReadDatabyIDDone:
