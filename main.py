@@ -8,9 +8,12 @@ import struct
 idList = np.arange(0x68C, 0x68E, 1)
 receivedCorrectMsg = False
 receivedReadDatabyIDDone = False
-udsClientID = 0x0000  # bytearray(b'\x00\x00')
-udsServerID = 0x0000  # bytearray(b'\x00\x00')
-cab500IpID = 0x0000  # bytearray(b'\x00\x00')
+udsClientID = 0x0000    #
+udsServerID = 0x0000    #
+cab500IpID = 0x0000     #
+udsClientIDnew = 0x0000    #
+udsServerIDnew = 0x0000    #
+cab500IpIDnew = 0x0000     #
 
 
 def print_hi(name):
@@ -31,6 +34,7 @@ class CAB500(IntEnum):
     SINGLE_FRAME_6_BYTE = 0x06
     SINGLE_FRAME_7_BYTE = 0x07
     SINGLE_FRAME_8_BYTE = 0x08
+    SINGLE_FRAME_9_BYTE = 0x09
     firstMessage = 0x10
     secondMessage = 0x21
     nineUsableData = 0x09
@@ -43,12 +47,14 @@ class CAB500(IntEnum):
     # Read data by identifier, single frame composed of 3 byte, \x03\x22\x then choose function
     readDataById = 0x22
     # Read CAN ID, \x03\x22\xF0\x10, then response, then transmit flow controll \x03\x00\x00
-    canIDread1 = 0xF0
-    canIDread2 = 0x10
+    canIDread = 0xF010
+    # canIDread2 = 0x10
     flowControl = 0x30  # 00 00
     canIDreadPos = 0x62
     canIDreadNeg = 0x7F
 
+    # WriteDataByIdentifier
+    writeDataById = 0x2E
     # Frequency of filter
     TEN_HZ = 0x01
     TWENTY_HZ = 0x02
@@ -73,7 +79,7 @@ def ecuResetService(msg_id):  # does not work on this version of CAB500 !!
 def readDatabyIdentifier(msg_id):
     msg = can.Message(
         arbitration_id=msg_id,
-        data=[CAB500.SINGLE_FRAME_3_BYTE, CAB500.readDataById, CAB500.canIDread1, CAB500.canIDread2],
+        data=[CAB500.SINGLE_FRAME_3_BYTE, CAB500.readDataById, CAB500.canIDread>>8, CAB500.canIDread&255],
         is_extended_id=False
     )
     try:
@@ -94,6 +100,19 @@ def flowControl(msg_id):
         bus.ch.send(msg)
         # print(f"Message sent on {bus.ch.channel_info}")
         # print(f"Data sent: {msg}")
+    except can.CanError:
+        print("Message NOT sent")
+
+def writeDatabyIdentifier(msg_id):
+    msg = can.Message(
+        arbitration_id=msg_id,
+        data=[CAB500.firstMessage, CAB500.SINGLE_FRAME_9_BYTE, CAB500.writeDataById, CAB500.canIDread, ],
+        is_extended_id=False
+    )
+    try:
+        bus.ch.send(msg)
+        print(f"Message sent on {bus.ch.channel_info}")
+        print(f"Data sent: {msg}")
     except can.CanError:
         print("Message NOT sent")
 
@@ -146,7 +165,7 @@ def receive_can_data(msg):
             if msg.data[1] == CAB500.nineUsableData:
                 if msg.data[2] == CAB500.canIDreadPos:
                     # print(f"Positive response")
-                    if msg.data[3] + msg.data[4] == CAB500.canIDread1 + CAB500.canIDread2:
+                    if int.from_bytes(msg.data[3:5]) == CAB500.canIDread:
                         receivedCorrectMsg = True
                         cab500IpID = int.from_bytes(msg.data[5:7])
                         # print(cab500IpID)
@@ -181,6 +200,7 @@ if __name__ == '__main__':
     if receivedReadDatabyIDDone:
         print_hi('Done, udsClientID: ' + hex(udsClientID) + ' , udsServerID: ' +
                  hex(udsServerID) + ' and cab500IpID: ' + hex(cab500IpID))
+
 
     bus.close_bus()
     print_hi('Stop program')
