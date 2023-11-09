@@ -8,12 +8,13 @@ import struct
 idList = np.arange(0x68C, 0x68E, 1)
 receivedCorrectMsg = False
 receivedReadDatabyIDDone = False
-udsClientID = 0x0000    #
-udsServerID = 0x0000    #
-cab500IpID = 0x0000     #
-udsClientIDnew = 0x0000    #
-udsServerIDnew = 0x0000    #
-cab500IpIDnew = 0x0000     #
+udsClientID = 0x0000        #
+udsServerID = 0x0000        #
+cab500IpID = 0x0000         #
+udsClientIDnew = 0x0000     #
+udsServerIDnew = 0x0000     #
+cab500IpIDnew = 0x0000      #
+debugging = 0                   # If true, extra debug message is printed
 
 
 def print_hi(name):
@@ -62,59 +63,39 @@ class CAB500(IntEnum):
     AVERAGE_TEN_MS = 0xFF
 
 
-def ecuResetService(msg_id):  # does not work on this version of CAB500 !!
+def sendStdCANmessage(msg_id, data_msg, debug):
     msg = can.Message(
         arbitration_id=msg_id,
-        data=[CAB500.SINGLE_FRAME_2_BYTE, CAB500.ecuResetMsg, CAB500.ecuResetMsg_send_soft],
+        data=data_msg,
         is_extended_id=False
     )
     try:
         bus.ch.send(msg)
-        # print(f"Message sent on {bus.ch.channel_info}")
-        # print(f"Data sent: {msg}")
+        if debug:
+            print(f"Message sent on {bus.ch.channel_info}")
+            print(f"Data sent: {msg}")
     except can.CanError:
         print("Message NOT sent")
 
 
-def readDatabyIdentifier(msg_id):
-    msg = can.Message(
-        arbitration_id=msg_id,
-        data=[CAB500.SINGLE_FRAME_3_BYTE, CAB500.readDataById, CAB500.canIDread>>8, CAB500.canIDread&255],
-        is_extended_id=False
-    )
-    try:
-        bus.ch.send(msg)
-        # print(f"Message sent on {bus.ch.channel_info}")
-        # print(f"Data sent: {msg}")
-    except can.CanError:
-        print("Message NOT sent")
+def ecuResetService(msg_id, debug):  # does not work on this version of CAB500 !!
+    data_msg = [CAB500.SINGLE_FRAME_2_BYTE, CAB500.ecuResetMsg, CAB500.ecuResetMsg_send_soft]
+    sendStdCANmessage(msg_id, data_msg, debug)
 
 
-def flowControl(msg_id):
-    msg = can.Message(
-        arbitration_id=msg_id,
-        data=[CAB500.flowControl, 0x00, 0x00],
-        is_extended_id=False
-    )
-    try:
-        bus.ch.send(msg)
-        # print(f"Message sent on {bus.ch.channel_info}")
-        # print(f"Data sent: {msg}")
-    except can.CanError:
-        print("Message NOT sent")
+def readDatabyIdentifier(msg_id, debug):
+    data_msg = [CAB500.SINGLE_FRAME_3_BYTE, CAB500.readDataById, CAB500.canIDread>>8, CAB500.canIDread&255]
+    sendStdCANmessage(msg_id, data_msg, debug)
 
-def writeDatabyIdentifier(msg_id):
-    msg = can.Message(
-        arbitration_id=msg_id,
-        data=[CAB500.firstMessage, CAB500.SINGLE_FRAME_9_BYTE, CAB500.writeDataById, CAB500.canIDread, ],
-        is_extended_id=False
-    )
-    try:
-        bus.ch.send(msg)
-        print(f"Message sent on {bus.ch.channel_info}")
-        print(f"Data sent: {msg}")
-    except can.CanError:
-        print("Message NOT sent")
+
+def flowControl(msg_id, debug):
+    data_msg =[CAB500.flowControl, 0x00, 0x00]
+    sendStdCANmessage(msg_id, data_msg, debug)
+
+
+def writeDatabyIdentifier(msg_id, debug):
+    data_msg = [CAB500.firstMessage, CAB500.SINGLE_FRAME_9_BYTE, CAB500.writeDataById, CAB500.canIDread, ]
+    sendStdCANmessage(msg_id, data_msg, debug)
 
 
 class CanInterface:
@@ -191,10 +172,10 @@ if __name__ == '__main__':
     notifier = can.Notifier(bus.ch, [receive_can_data])
 
     for id in idList:
-        readDatabyIdentifier(id)
+        readDatabyIdentifier(id, debugging)
         time.sleep(0.01)
         if receivedCorrectMsg:
-            flowControl(id)
+            flowControl(id, debugging)
             time.sleep(0.01)
             break
     if receivedReadDatabyIDDone:
