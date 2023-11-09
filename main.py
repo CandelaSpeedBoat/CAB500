@@ -5,16 +5,16 @@ from enum import IntEnum
 import struct
 
 # idList = np.arange(0x40B, 0x7F0, 1)
-idList = np.arange(0x68C, 0x68E, 1)
+idList = np.arange(0x68D, 0x68E, 1)
 receivedCorrectMsg = False
 receivedReadDatabyIDDone = False
 udsClientID = 0x0000        #
 udsServerID = 0x0000        #
 cab500IpID = 0x0000         #
-udsClientIDnew = 0x0000     #
-udsServerIDnew = 0x0000     #
-cab500IpIDnew = 0x0000      #
-debugging = 0                   # If true, extra debug message is printed
+udsClientIDnew = 0x69D      #
+udsServerIDnew = 0x69E      #
+cab500IpIDnew = 0x03C2      #
+debugging = False           # If true, extra debug message is printed
 
 
 def print_hi(name):
@@ -51,11 +51,12 @@ class CAB500(IntEnum):
     canIDread = 0xF010
     # canIDread2 = 0x10
     flowControl = 0x30  # 00 00
-    canIDreadPos = 0x62
-    canIDreadNeg = 0x7F
+    posResponseRead = 0x62
+    negResponse = 0x7F
 
     # WriteDataByIdentifier
     writeDataById = 0x2E
+    posResponseWrite = 0x6E
     # Frequency of filter
     TEN_HZ = 0x01
     TWENTY_HZ = 0x02
@@ -84,7 +85,7 @@ def ecuResetService(msg_id, debug):  # does not work on this version of CAB500 !
 
 
 def readDatabyIdentifier(msg_id, debug):
-    data_msg = [CAB500.SINGLE_FRAME_3_BYTE, CAB500.readDataById, CAB500.canIDread>>8, CAB500.canIDread&255]
+    data_msg = [CAB500.SINGLE_FRAME_3_BYTE, CAB500.readDataById, CAB500.canIDread >> 8, CAB500.canIDread & 255]
     sendStdCANmessage(msg_id, data_msg, debug)
 
 
@@ -94,9 +95,12 @@ def flowControl(msg_id, debug):
 
 
 def writeDatabyIdentifier(msg_id, debug):
-    data_msg = [CAB500.firstMessage, CAB500.SINGLE_FRAME_9_BYTE, CAB500.writeDataById, CAB500.canIDread, ]
+    data_msg = [CAB500.firstMessage, CAB500.SINGLE_FRAME_9_BYTE, CAB500.writeDataById, CAB500.canIDread >> 8,
+                CAB500.canIDread & 255, cab500IpIDnew >> 8, cab500IpIDnew & 255, udsClientIDnew >> 8]
     sendStdCANmessage(msg_id, data_msg, debug)
-
+def writeDatabyIdentifier2nd(msg_id, debug):
+    data_msg = [CAB500.secondMessage, udsClientIDnew &255, udsServerIDnew >> 8, udsServerIDnew & 255]
+    sendStdCANmessage(msg_id, data_msg, debug)
 
 class CanInterface:
 
@@ -141,10 +145,11 @@ def receive_can_data(msg):
 
     # print(f"Recieved data: {msg.data}, id: {hex(msg.arbitration_id)}")
     if msg.is_rx == True and msg.dlc == 8:
-        # print("Message recieved and dlc=8")
+        print("Message recieved and dlc=8")
+        print(msg.data)
         if msg.data[0] == CAB500.firstMessage:  # First frame of message
             if msg.data[1] == CAB500.nineUsableData:
-                if msg.data[2] == CAB500.canIDreadPos:
+                if msg.data[2] == CAB500.posResponseRead:
                     # print(f"Positive response")
                     if int.from_bytes(msg.data[3:5]) == CAB500.canIDread:
                         receivedCorrectMsg = True
@@ -160,6 +165,26 @@ def receive_can_data(msg):
             udsClientID = int.from_bytes([udsClientID, msg.data[1]])
             udsServerID = int.from_bytes(msg.data[2:4])
             receivedReadDatabyIDDone = True
+        elif msg.data[0] == CAB500.flowControl and \
+                int.from_bytes([msg.data[1], msg.data[2], msg.data[3],
+                                msg.data[4], msg.data[5], msg.data[6],
+                                msg.data[7]]) == 0:
+            print("flow control message received")
+            writeDatabyIdentifier2nd(udsClientID, True)
+        elif msg.data[0] == CAB500.SINGLE_FRAME_3_BYTE and msg.arbitration_id == udsServerID:
+            if msg.data[1] == CAB500.posResponseWrite:
+                print("Change accepted, subfunction: ")
+                print(hex(msg.data[2]), hex(msg.data[3]))
+            elif msg.data[1] == CAB500.negResponse:
+                print("Negative response, subfunction: ")
+                print(hex(msg.data[2]))
+            else:
+                print("Error, WriteDataByIdentifier")
+                print(hex(msg.data[1]))
+                print(hex(msg.data[2]))
+
+
+
 
     # data_unpack = struct.unpack(">IB3x", msg.data)
     # print(data_unpack)
@@ -181,6 +206,8 @@ if __name__ == '__main__':
     if receivedReadDatabyIDDone:
         print_hi('Done, udsClientID: ' + hex(udsClientID) + ' , udsServerID: ' +
                  hex(udsServerID) + ' and cab500IpID: ' + hex(cab500IpID))
+    writeDatabyIdentifier(udsClientID, True)
+    time.sleep(0.01)
 
 
     bus.close_bus()
