@@ -275,24 +275,27 @@ if __name__ == '__main__':
     print_hi('Start program')
     print_hi(f'Min: {hex(min(idList))}, Max: {hex(max(idList))}')
     bus = CanInterface(0x11)
-    #notifier = can.Notifier(bus.ch, [receive_can_data])
+    notifier = can.Notifier(bus.ch, [receive_can_data])
 
-    # for id in idList:
-    #     readDatabyIdentifierID(id, debugging)
-    #     time.sleep(0.01)
-    #     if receivedCorrectMsg:
-    #         flowControl(id, debugging)
-    #         time.sleep(0.01)
-    #         break
-    # if receivedReadDatabyIDDone:
-    #     print_hi('Done, udsClientID: ' + hex(udsClientID) + ' , udsServerID: ' +
-    #              hex(udsServerID) + ' and cab500IpID: ' + hex(cab500IpID))
-    udsClientID = 0x6A2
-    readDatabyIdentifierFilerfreq(udsClientID, debugging)
-    time.sleep(0.01)
-    readDatabyIdentifierCANspeed(udsClientID, debugging)
-    time.sleep(0.01)
-    readDatabyIdentifierFramefreq(udsClientID, debugging)
+    for id in idList:
+        readDatabyIdentifierID(id, debugging)
+        time.sleep(0.01)
+        if receivedCorrectMsg:
+            flowControl(id, debugging)
+            time.sleep(0.01)
+            print_hi('Done, udsClientID: ' + hex(udsClientID) + ' , udsServerID: ' +
+                     hex(udsServerID) + ' and cab500IpID: ' + hex(cab500IpID))
+            time.sleep(0.01)
+            readDatabyIdentifierFilerfreq(udsClientID, debugging)
+            time.sleep(0.01)
+            readDatabyIdentifierCANspeed(udsClientID, debugging)
+            time.sleep(0.01)
+            readDatabyIdentifierFramefreq(udsClientID, debugging)
+
+    if receivedReadDatabyIDDone:
+        print_hi('Done, udsClientID: ' + hex(udsClientID) + ' , udsServerID: ' +
+                 hex(udsServerID) + ' and cab500IpID: ' + hex(cab500IpID))
+
     #writeDatabyIdentifier(udsClientID, debugging)
 
     time.sleep(0.01)
