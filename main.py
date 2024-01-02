@@ -1,27 +1,30 @@
 import time
 import numpy as np
 import can
+from can.notifier import MessageRecipient
 from enum import IntEnum
-import struct
+from typing import List
 
-# idList = np.arange(0x40B, 0x7F0, 1)
-idList = np.arange(0x600, 0x6FF, 1)
+idList1 = np.arange(0x40B, 0x7F1, 1)
+idList2 = np.arange(0x221, 0x400, 1)
+idList = np.append(idList1, idList2)
+# idList = np.arange(0x3F0, 0x3F1, 1)
 receivedCorrectMsg = False
 receivedReadDatabyIDDone = False
-udsClientID = 0x0000        #
-udsServerID = 0x0000        #
-cab500IpID = 0x0000         #
-cab500IpIDnew  = 0x06AC      #
-udsServerIDnew = 0x06AD      #
-udsClientIDnew = 0x06AE      #
+udsClientID = 0x0000  #
+udsServerID = 0x0000  #
+cab500IpID = 0x0000  #
+cab500IpIDnew = 0x06AC  #
+udsServerIDnew = 0x06AD  #
+udsClientIDnew = 0x06AE  #
+id = 0
 
-debugging = False           # If true, extra debug message is printed
-
+debugging = False  # If true, extra debug message is printed
 
 freq_dict = {1: 'IIR10_HZ', 2: 'IIR20_HZ', 3: 'IIR30_HZ', 4: 'IIR40_HZ', 5: 'IIR50_HZ', 6: 'IIR60_HZ',
              7: 'IIR70_HZ', 8: 'IIR80_HZ', 9: 'IIR90_HZ', 10: 'IIR100_HZ', 11: 'IIR110_HZ', 12: 'IIR120_HZ',
              13: 'IIR130_HZ', 14: 'IIR140_HZ', 15: 'IIR150_HZ', 16: 'IIR160_HZ', 255: 'AVERAGE_TEN_MS'}
-canSpeed_dict = {0x007D: "baudrate_125k", 0x00FA:"baudrate_250k", 0x01F4: "baudrate_500k"}
+canSpeed_dict = {0x007D: "baudrate_125k", 0x00FA: "baudrate_250k", 0x01F4: "baudrate_500k"}
 
 
 def print_hi(name):
@@ -32,8 +35,8 @@ class CAB500(IntEnum):
     udsClientID = 0x0000
     udsServerID = 0x0000
     cab500IpID = 0x0000
-    receivedCorrectMsg: bool = False
-    receivedReadDatabyIDDone: bool = False
+    # receivedCorrectMsg: bool = False
+    # receivedReadDatabyIDDone: bool = False
     SINGLE_FRAME_1_BYTE = 0x01  # Frame consists of 1 msg with 1 byte of data
     SINGLE_FRAME_2_BYTE = 0x02  # Frame consists of 1 msg with 2 byte of data
     SINGLE_FRAME_3_BYTE = 0x03
@@ -87,11 +90,11 @@ class CAB500(IntEnum):
     IIR160_HZ = 0x10
     AVERAGE_TEN_MS = 0xFF
 
-    #freq_dict = {"IIR10_HZ": 0x01, "IIR20_HZ": 0x02, "IIR30_HZ": 0x03, "IIR40_HZ": 0x04, "IIR50_HZ": 0x05,
-     #            "IIR60_HZ": 0x06, "IIR70_HZ": 0x07, "IIR80_HZ": 0x08, "IIR90_HZ": 0x09, "IIR100_HZ": 0x0A,
-      #           "IIR110_HZ": 0x0B, "IIR120_HZ": 0x0C, "IIR130_HZ": 0x0D, "IIR140_HZ": 0x0E,
-       #          "IIR150_HZ": 0x0F, "IIR160_HZ": 0x10, "AVERAGE_TEN_MS": 0xFF}
-    #freq_dict = {1: 'IIR10_HZ', 2: 'IIR20_HZ', 3: 'IIR30_HZ', 4: 'IIR40_HZ', 5: 'IIR50_HZ', 6: 'IIR60_HZ',
+    # freq_dict = {"IIR10_HZ": 0x01, "IIR20_HZ": 0x02, "IIR30_HZ": 0x03, "IIR40_HZ": 0x04, "IIR50_HZ": 0x05,
+    #            "IIR60_HZ": 0x06, "IIR70_HZ": 0x07, "IIR80_HZ": 0x08, "IIR90_HZ": 0x09, "IIR100_HZ": 0x0A,
+    #           "IIR110_HZ": 0x0B, "IIR120_HZ": 0x0C, "IIR130_HZ": 0x0D, "IIR140_HZ": 0x0E,
+    #          "IIR150_HZ": 0x0F, "IIR160_HZ": 0x10, "AVERAGE_TEN_MS": 0xFF}
+    # freq_dict = {1: 'IIR10_HZ', 2: 'IIR20_HZ', 3: 'IIR30_HZ', 4: 'IIR40_HZ', 5: 'IIR50_HZ', 6: 'IIR60_HZ',
     #             7: 'IIR70_HZ', 8: 'IIR80_HZ', 9: 'IIR90_HZ', 10: 'IIR100_HZ', 11: 'IIR110_HZ', 12: 'IIR120_HZ',
     #             13: 'IIR130_HZ', 14: 'IIR140_HZ', 15: 'IIR150_HZ', 16: 'IIR160_HZ', 255: 'AVERAGE_TEN_MS'}
 
@@ -133,23 +136,38 @@ def readDatabyIdentifierID(msg_id, debug):
 
 
 def readDatabyIdentifierFilerfreq(msg_id, debug):
+    # print("readData filter msg id: ", hex(msg_id))
     data_msg = [CAB500.SINGLE_FRAME_3_BYTE, CAB500.readDataById, CAB500.subf_CAN_ID >> 8, CAB500.subf_FilterFreq & 255]
     sendStdCANmessage(msg_id, data_msg, debug)
-    notifier = can.Notifier(bus.ch, [receive_can_data_signle])
+
 
 def readDatabyIdentifierFramefreq(msg_id, debug):
+    # print("readData frame freq msg id: ", hex(msg_id))
     data_msg = [CAB500.SINGLE_FRAME_3_BYTE, CAB500.readDataById, CAB500.subf_CAN_ID >> 8, CAB500.subf_FrameFreq & 255]
     sendStdCANmessage(msg_id, data_msg, debug)
-    notifier = can.Notifier(bus.ch, [receive_can_data_signle])
+
 
 def readDatabyIdentifierCANspeed(msg_id, debug):
+    # print("readData CAN speed msg id: ", hex(msg_id))
     data_msg = [CAB500.SINGLE_FRAME_3_BYTE, CAB500.readDataById, CAB500.subf_CAN_ID >> 8, CAB500.subf_CANspeed & 255]
     sendStdCANmessage(msg_id, data_msg, debug)
-    notifier = can.Notifier(bus.ch, [receive_can_data_signle])
+
+
+def printInfoCAB500():
+    global cab500IpID, udsClientID, udsServerID
+    print_hi('Done, udsClientID: ' + hex(udsClientID) + ' , udsServerID: ' +
+             hex(udsServerID) + ' and cab500IpID: ' + hex(cab500IpID))
+    time.sleep(0.001)
+    readDatabyIdentifierFilerfreq(udsClientID, debugging)
+    time.sleep(0.001)
+    readDatabyIdentifierCANspeed(udsClientID, debugging)
+    time.sleep(0.001)
+    readDatabyIdentifierFramefreq(udsClientID, debugging)
+    time.sleep(0.001)
 
 
 def flowControl(msg_id, debug):
-    data_msg =[CAB500.flowControl, 0x00, 0x00]
+    data_msg = [CAB500.flowControl, 0x00, 0x00]
     sendStdCANmessage(msg_id, data_msg, debug)
 
 
@@ -161,9 +179,12 @@ def writeDatabyIdentifier(msg_id, debug):
         data_msg = [CAB500.firstMessage, CAB500.SINGLE_FRAME_9_BYTE, CAB500.writeDataById, CAB500.subf_CAN_ID >> 8,
                     CAB500.subf_CAN_ID & 255, cab500IpIDnew >> 8, cab500IpIDnew & 255, udsClientIDnew >> 8]
         sendStdCANmessage(msg_id, data_msg, debug)
+
+
 def writeDatabyIdentifier2nd(msg_id, debug):
     data_msg = [CAB500.secondMessage, udsClientIDnew & 255, udsServerIDnew >> 8, udsServerIDnew & 255]
     sendStdCANmessage(msg_id, data_msg, debug)
+
 
 class CanInterface:
 
@@ -172,12 +193,14 @@ class CanInterface:
         self.channel = channel
         self.bustype = bustype
         self.bitrate = bitrate
-        self.accept_virtual = 1
+        self.accept_virtual = True
+
 
         # TODO move to function to connect to network
         # TODO add function to disconnect network.disconnect()
         # Try to find a CAN-Bus interface
-        for interface, channel in [('kvaser', 0), ('kvaser', 1),('socketcan', 'can0'), ('pcan', 'PCAN_USBBUS1'), ('ixxat', 0)]:
+        for interface, channel in [('kvaser', 0), ('kvaser', 1), ('socketcan', 'can0'), ('pcan', 'PCAN_USBBUS1'),
+                                   ('ixxat', 0)]:
             try:
                 self._can_bus = can.ThreadSafeBus(interface=interface, channel=channel, bitrate=self.bitrate)
                 break
@@ -186,8 +209,6 @@ class CanInterface:
         else:
             raise Exception('No CAN-Bus interface was found')
         self.ch = self._can_bus
-        #  TODO add filter to notifier, filter on udsServerID
-
 
     def add_can_msg_callback(self):
         pass
@@ -201,23 +222,26 @@ class CanInterface:
 
 
 def receive_can_data(msg):
-    global receivedCorrectMsg, cab500IpID, udsClientID, udsServerID, receivedReadDatabyIDDone
+    global receivedCorrectMsg, cab500IpID, udsClientID, udsServerID, receivedReadDatabyIDDone, id
 
-    # print(f"Recieved data: {msg.data}, id: {hex(msg.arbitration_id)}")
+    # print(f"Recieved data All: {msg.data}, id: {hex(msg.arbitration_id)}")
     if msg.is_rx == True and msg.dlc == 8:
         if debugging:
             print("Message recieved and dlc=8")
             print(msg.data)
         if msg.data[0] == CAB500.firstMessage:  # First frame of message
+            # print("Message recieved and dlc=8 and first msg")
+            # print(msg.data)
             if msg.data[1] == CAB500.nineUsableData:
                 if msg.data[2] == CAB500.posResponseRead:
                     # print(f"Positive response")
                     if int.from_bytes(msg.data[3:5]) == CAB500.subf_CAN_ID:
                         receivedCorrectMsg = True
+                        # print("correct msg state: ", receivedCorrectMsg)
+                        flowControl(id, debugging)
                         cab500IpID = int.from_bytes(msg.data[5:7])
-                        # print(cab500IpID)
+                        # print("flowcontrol is sent: ", id)
                         udsClientID = msg.data[7]
-                        # print(udsClientID)
                 else:
                     print("Negative response, wrong format" + msg.data)
 
@@ -225,6 +249,7 @@ def receive_can_data(msg):
             # print("Second message received")
             udsClientID = int.from_bytes([udsClientID, msg.data[1]])
             udsServerID = int.from_bytes(msg.data[2:4])
+            printInfoCAB500()
             receivedReadDatabyIDDone = True
         elif msg.data[0] == CAB500.flowControl and \
                 int.from_bytes([msg.data[1], msg.data[2], msg.data[3],
@@ -244,25 +269,27 @@ def receive_can_data(msg):
                 print(hex(msg.data[1]))
                 print(hex(msg.data[2]))
 
-def receive_can_data_signle(msg):
-    global receivedCorrectMsg, cab500IpID, udsClientID, udsServerID, receivedReadDatabyIDDone
 
-    # print(f"Recieved data: {msg.data}, id: {hex(msg.arbitration_id)}")
+def receive_can_data_single(msg):
+    global receivedCorrectMsg, cab500IpID, udsClientID, udsServerID, receivedReadDatabyIDDone
+    # print(f"Recieved data single 1: {msg.data}, id: {hex(msg.arbitration_id)}")
     if msg.is_rx == True and msg.dlc == 8:
-        if msg.data[0] == CAB500.SINGLE_FRAME_4_BYTE: # and msg.arbitration_id == udsServerID:
+        if msg.data[0] == CAB500.SINGLE_FRAME_4_BYTE:  # and msg.arbitration_id == udsServerID:
+            # print(f"Recieved data single 2: {msg.data}, id: {hex(msg.arbitration_id)}")
             if msg.data[1] == CAB500.posResponseRead:
                 # print("Read data by ID, subfunction: ")
                 # print(hex((msg.data[2] << 8) + msg.data[3]))
                 if (msg.data[2] << 8) + msg.data[3] == CAB500.subf_FilterFreq:
-                    print("subFilterFreq: ", freq_dict[msg.data[4]])
+                    print("UDS Server ID: ", hex(msg.arbitration_id), ", subFilterFreq: ", freq_dict[msg.data[4]])
         if msg.data[0] == CAB500.SINGLE_FRAME_5_BYTE:  # and msg.arbitration_id == udsServerID:
             if msg.data[1] == CAB500.posResponseRead:
                 # print("Read data by ID, subfunction: ")
                 # print(hex((msg.data[2] << 8) + msg.data[3]))
                 if ((msg.data[2] << 8) + msg.data[3]) == CAB500.subf_CANspeed:
-                    print("subCANspeed: ", canSpeed_dict[(msg.data[4] << 8) + msg.data[5]])
+                    print("UDS Server ID: ", hex(msg.arbitration_id), ", subCANspeed: ",
+                          canSpeed_dict[(msg.data[4] << 8) + msg.data[5]])
                 elif ((msg.data[2] << 8) + msg.data[3]) == CAB500.subf_FrameFreq:
-                    print("subCANspeed: ", msg.data[5], "ms")
+                    print("UDS Server ID: ", hex(msg.arbitration_id), ", subCANspeed: ", msg.data[5], "ms")
 
             else:
                 print("Error, ReadDataByIdentifier")
@@ -270,35 +297,52 @@ def receive_can_data_signle(msg):
                 print(hex(msg.data[2]))
 
 
-
 if __name__ == '__main__':
+    globals()
+
     print_hi('Start program')
     print_hi(f'Min: {hex(min(idList))}, Max: {hex(max(idList))}')
     bus = CanInterface(0x11)
-    notifier = can.Notifier(bus.ch, [receive_can_data])
+    logger = can.SizedRotatingLogger(
+        base_filename="data/logger_CAB500.csv",
+        max_bytes=1 * 1024 ** 2,  # =2MB
+        append=True
+    )
+    listeners: List[MessageRecipient] = [
+        receive_can_data,  # Callback function
+        receive_can_data_single,
+        logger,  # Regular Listener object
+    ]
+
+    notifier = can.Notifier(bus.ch, listeners)
+    wait = 0
 
     for id in idList:
         readDatabyIdentifierID(id, debugging)
-        time.sleep(0.01)
+        while (wait < 2) and not receivedCorrectMsg:
+            # print("CorrectMsg state:",(not receivedCorrectMsg), "Wait: ", wait)
+            ok = receivedCorrectMsg
+            time.sleep(0.001)
+            wait += 1
         if receivedCorrectMsg:
-            flowControl(id, debugging)
-            time.sleep(0.01)
-            print_hi('Done, udsClientID: ' + hex(udsClientID) + ' , udsServerID: ' +
-                     hex(udsServerID) + ' and cab500IpID: ' + hex(cab500IpID))
-            time.sleep(0.01)
-            readDatabyIdentifierFilerfreq(udsClientID, debugging)
-            time.sleep(0.01)
-            readDatabyIdentifierCANspeed(udsClientID, debugging)
-            time.sleep(0.01)
-            readDatabyIdentifierFramefreq(udsClientID, debugging)
+            receivedCorrectMsg = False
+            wait = 0
+        while (wait < 2) and not receivedReadDatabyIDDone:
+            # print("ID Done state:",(not receivedReadDatabyIDDone), "Wait: ", wait)
+            ok = receivedReadDatabyIDDone
+            time.sleep(0.001)
+            wait += 1
+        if receivedReadDatabyIDDone:
+            receivedReadDatabyIDDone = False
+        wait = 0
 
-    if receivedReadDatabyIDDone:
-        print_hi('Done, udsClientID: ' + hex(udsClientID) + ' , udsServerID: ' +
-                 hex(udsServerID) + ' and cab500IpID: ' + hex(cab500IpID))
+    # if receivedReadDatabyIDDone:
+    #    print_hi('Done, udsClientID: ' + hex(udsClientID) + ' , udsServerID: ' +
+    #             hex(udsServerID) + ' and cab500IpID: ' + hex(cab500IpID))
 
-    #writeDatabyIdentifier(udsClientID, debugging)
+    # writeDatabyIdentifier(udsClientID, debugging)
 
     time.sleep(0.01)
-    #ecuResetService(udsClientID, debugging)
+    # ecuResetService(udsClientID, debugging)
     bus.close_bus()
     print_hi('Stop program')
