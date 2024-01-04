@@ -151,9 +151,6 @@ class CanInterface:
         self.bitrate = bitrate
         self.accept_virtual = True
 
-
-        # TODO move to function to connect to network
-        # TODO add function to disconnect network.disconnect()
         # Try to find a CAN-Bus interface
         for interface, channel in [('kvaser', 0), ('kvaser', 1), ('socketcan', 'can0'), ('pcan', 'PCAN_USBBUS1'),
                                    ('ixxat', 0)]:
