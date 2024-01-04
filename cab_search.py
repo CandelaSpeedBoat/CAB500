@@ -1,6 +1,8 @@
 import time
 import numpy as np
 import can
+import logging
+import os
 from can.notifier import MessageRecipient
 from enum import IntEnum
 from typing import List
@@ -85,6 +87,8 @@ def printInfoCAB500():
     global cab500IpID, udsClientID, udsServerID
     print_hi('Done, udsClientID: ' + hex(udsClientID) + ' , udsServerID: ' +
              hex(udsServerID) + ' and cab500IpID: ' + hex(cab500IpID))
+    logging.info(time.strftime("%H%M%S") + "," + str(hex(udsClientID)) + ",cab500IpID," + str(hex(cab500IpID)))
+    logging.info(time.strftime("%H%M%S") + "," + str(hex(udsClientID)) + ",udsServerID," + str(hex(udsServerID)))
     time.sleep(0.001)
     readDatabyIdentifierFilerfreq(udsClientID, debugging)
     time.sleep(0.001)
@@ -206,6 +210,7 @@ def receive_can_data_single(msg):
                 # print(hex((msg.data[2] << 8) + msg.data[3]))
                 if (msg.data[2] << 8) + msg.data[3] == sense.CAB500.subf_FilterFreq:
                     print("UDS Server ID: ", hex(msg.arbitration_id), ", subFilterFreq: ", freq_dict[msg.data[4]])
+                    logging.info(time.strftime("%H%M%S") + "," + str(hex(udsClientID)) + ",subFilterFreq," + freq_dict[msg.data[4]])
         if msg.data[0] == sense.CAB500.SINGLE_FRAME_5_BYTE:  # and msg.arbitration_id == udsServerID:
             if msg.data[1] == sense.CAB500.posResponseRead:
                 # print("Read data by ID, subfunction: ")
@@ -213,8 +218,10 @@ def receive_can_data_single(msg):
                 if ((msg.data[2] << 8) + msg.data[3]) == sense.CAB500.subf_CANspeed:
                     print("UDS Server ID: ", hex(msg.arbitration_id), ", subCANspeed: ",
                           canSpeed_dict[(msg.data[4] << 8) + msg.data[5]])
+                    logging.info(time.strftime("%H%M%S") + "," + str(hex(udsClientID)) + ",subCANspeed," + canSpeed_dict[(msg.data[4] << 8) + msg.data[5]])
                 elif ((msg.data[2] << 8) + msg.data[3]) == sense.CAB500.subf_FrameFreq:
-                    print("UDS Server ID: ", hex(msg.arbitration_id), ", subCANspeed: ", msg.data[5], "ms")
+                    print("UDS Server ID: ", hex(msg.arbitration_id), ", subFramePeriod: ", msg.data[5], "ms")
+                    logging.info(time.strftime("%H%M%S") + "," + str(hex(udsClientID)) + ",subFramePeriod," + str(msg.data[5]) + "ms")
 
             else:
                 print("Error, ReadDataByIdentifier")
@@ -227,6 +234,15 @@ if __name__ == '__main__':
 
     print_hi('Start program')
     print_hi(f'Min: {hex(min(idList))}, Max: {hex(max(idList))}')
+    if os.path.isdir("data"):
+        filename = "data/" + time.strftime("%Y%m%d") + "_discoveredSensors.log"
+        print("printing")
+        logging.basicConfig(filename=filename, level=logging.INFO)
+        #with open(filename, 'a', newline='') as csvfile:
+        #    loggwriter = csv.writer(csvfile)
+        logging.info(["Time", "msgID", "subfunction", "value"])
+    else:
+        print("test failed")
     bus = CanInterface(0x11)
     logger = can.SizedRotatingLogger(
         base_filename="data/logger_CAB500.csv",
