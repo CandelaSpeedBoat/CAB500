@@ -128,8 +128,8 @@ def writeDatasubFunctionCANspeed(msg_id, can_speed, debug):
         if debug:
             print("Message not sent, msg_id = 0")
     else:
-        data_msg = [sense.CAB500.SINGLE_FRAME_4_BYTE, sense.CAB500.writeDataById, sense.CAB500.subf_CANspeed >> 8,
-                    sense.CAB500.subf_CANspeed & 255, can_speed]
+        data_msg = [sense.CAB500.SINGLE_FRAME_5_BYTE, sense.CAB500.writeDataById, sense.CAB500.subf_CANspeed >> 8,
+                    sense.CAB500.subf_CANspeed & 255, 0x00, can_speed]
         sendStdCANmessage(msg_id, data_msg, debug)
 
 
@@ -327,7 +327,7 @@ if __name__ == '__main__':
             print_hi(subFunc)
             canSpeed = input("Select CAN speed: 125/250/500 [kBaud] ")
             if all(x in [125, 250, 500] for x in [auto_int(canSpeed)]):
-                writeDatasubFunctionCANspeed(msgID, auto_int(canSpeed), debugging)
+                writeDatasubFunctionCANspeed(msgID, auto_int(canSpeed), True)
             else:
                 print("Values not in valid set")
 
@@ -335,7 +335,7 @@ if __name__ == '__main__':
             print_hi(subFunc)
             canSpeed = input("Select frame period: 10-100 [ms] ")
             if all(x in framePeriodList for x in [auto_int(canSpeed)]):
-                writeDatasubFunctionCANspeed(msgID, auto_int(canSpeed), debugging)
+                writeDatasubFunctionFramePeriod(msgID, auto_int(canSpeed), debugging)
             else:
                 print("Values not in valid set")
         case "reboot":
