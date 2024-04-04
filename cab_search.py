@@ -4,7 +4,6 @@ import can
 import logging
 import os
 from can.notifier import MessageRecipient
-from enum import IntEnum
 from typing import List
 import sensorCAB as sense
 
@@ -125,13 +124,14 @@ class CanInterface:
         self.channel = channel
         self.bustype = bustype
         self.bitrate = bitrate
-        self.accept_virtual = True
+        # self.accept_virtual = True # Only for kvaser interface as far as I know
 
         # Try to find a CAN-Bus interface
         for interface, channel in [('kvaser', 0), ('kvaser', 1), ('socketcan', 'can0'), ('pcan', 'PCAN_USBBUS1'),
                                    ('ixxat', 0)]:
             try:
                 self._can_bus = can.ThreadSafeBus(interface=interface, channel=channel, bitrate=self.bitrate)
+                print("Interface: ", interface, " Channel: ", channel, " can setup")
                 break
             except (OSError, can.CanError, NameError, ImportError):
                 pass
@@ -236,7 +236,7 @@ if __name__ == '__main__':
     print_hi(f'Min: {hex(min(idList))}, Max: {hex(max(idList))}')
     if os.path.isdir("data"):
         filename = "data/" + time.strftime("%Y%m%d") + "_discoveredSensors.log"
-        print("printing")
+        print("Log printing")
         logging.basicConfig(filename=filename, level=logging.INFO)
         #with open(filename, 'a', newline='') as csvfile:
         #    loggwriter = csv.writer(csvfile)
