@@ -3,7 +3,6 @@ import numpy as np
 import can
 import logging
 import os
-import sys
 from can.notifier import MessageRecipient
 from typing import List
 import sensorCAB as sense
@@ -238,7 +237,8 @@ if __name__ == '__main__':
     if os.path.isdir("data"):
         filename = "data/" + time.strftime("%Y%m%d") + "_discoveredSensors.log"
         print("Logging")
-        logging.basicConfig(filename=filename, level=logging.INFO)
+        logging.basicConfig(filename=filename, level=logging.INFO, style='{', datefmt='%Y-%m-%d %H:%M:%S',
+                            format='{asctime} {levelname} {filename}:{lineno}: {message}')
         logging.info(["Time", "msgID", "subfunction", "value"])
     else:
         print("No folder to keep log data in, no logs will be written")

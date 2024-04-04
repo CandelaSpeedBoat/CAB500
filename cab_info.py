@@ -2,6 +2,8 @@ import time
 import argparse
 import numpy as np
 import can
+import os
+import logging
 from can.notifier import MessageRecipient
 from typing import List
 import sensorCAB as sense
@@ -269,12 +271,24 @@ if __name__ == '__main__':
     cab500IpIDnew = args.IpID
     subFunc = args.subF
 
+    if os.path.isdir("data"):
+        filename = "data/" + time.strftime("%Y%m%d") + "_sensorsInfo.log"
+        print("Logging")
+        logging.basicConfig(filename=filename, level=logging.INFO, style='{', datefmt='%Y-%m-%d %H:%M:%S',
+                            format='{asctime} {levelname} {filename}:{lineno}: {message}')
+        logging.info(["Time", "msgID", "subfunction", "value"])
+    else:
+        print("No folder to keep log data in, no logs will be written")
+
 
     print_hi('Start program')
     bus = CanInterface(0x11)
-
+    if os.path.isdir("data"):
+        b_filename = "data/logger_CAB500.csv"
+    else:
+        b_filename = "logger_CAB500.csv"
     logger = can.SizedRotatingLogger(
-        base_filename="data/logger_CAB500.csv",
+        base_filename=b_filename,
         max_bytes=1 * 1024 ** 2,  # =2MB
         append=True
     )
