@@ -24,7 +24,7 @@ canSpeed_dict = {0x007D: "baudrate_125k", 0x00FA: "baudrate_250k", 0x01F4: "baud
 
 
 def print_hi(name):
-    print(f'Msg:, {name}')
+    print(f'Msg: {name}')
 
 
 def auto_int(x):
@@ -255,12 +255,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description="Script to change config of the LEM CAB500 sensor"
     )
-    parser.add_argument("--udsClientID", required=False, type=auto_int, default=0x3C2, metavar="Current UDS client ID")
+    parser.add_argument("--udsClientID", required=False, type=auto_int, default=0x03C2, metavar="Current UDS client ID")
     parser.add_argument("--subF", required=False, type=str, default="nil", metavar="subFunctions: canID, filterFreq,"
                                                                                    " CANspeed, framePeriod and reboot.")
-    parser.add_argument("--clientID", required=False, type=int, default=0x0000, metavar="New udsClient ID")
-    parser.add_argument("--serverID", required=False, type=int, default=0x0000, metavar="New udsServer ID")
-    parser.add_argument("--IpID", required=False, type=int, default=0x0000, metavar="New Ip message ID")
+    parser.add_argument("--clientID", required=False, type=auto_int, default=0x0000, metavar="New udsClient ID")
+    parser.add_argument("--serverID", required=False, type=auto_int, default=0x0000, metavar="New udsServer ID")
+    parser.add_argument("--IpID", required=False, type=auto_int, default=0x0000, metavar="New Ip message ID")
     args = parser.parse_args()
 
     msgID = args.udsClientID
@@ -272,6 +272,7 @@ if __name__ == '__main__':
 
     print_hi('Start program')
     bus = CanInterface(0x11)
+
     logger = can.SizedRotatingLogger(
         base_filename="data/logger_CAB500.csv",
         max_bytes=1 * 1024 ** 2,  # =2MB
@@ -297,6 +298,9 @@ if __name__ == '__main__':
         run_test = input("Run test program: [Y/N] ")
         if run_test == "Y":
             msgID = 0x03C2
+            #udsClientIDnew = 0x0221
+            #udsServerIDnew = 0x0222
+            #cab500IpIDnew = 0x0223
         else:
             exit(1)
 

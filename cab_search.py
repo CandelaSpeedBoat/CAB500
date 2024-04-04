@@ -3,6 +3,7 @@ import numpy as np
 import can
 import logging
 import os
+import sys
 from can.notifier import MessageRecipient
 from typing import List
 import sensorCAB as sense
@@ -30,7 +31,7 @@ canSpeed_dict = {0x007D: "baudrate_125k", 0x00FA: "baudrate_250k", 0x01F4: "baud
 
 
 def print_hi(name):
-    print(f'Msg:, {name}')
+    print(f'Msg: {name}')
 
 
 def sendStdCANmessage(msg_id, data_msg, debug):
@@ -127,17 +128,17 @@ class CanInterface:
         # self.accept_virtual = True # Only for kvaser interface as far as I know
 
         # Try to find a CAN-Bus interface
-        for interface, channel in [('kvaser', 0), ('kvaser', 1), ('socketcan', 'can0'), ('pcan', 'PCAN_USBBUS1'),
+        for interface, channel in [('socketcan', 'can0'), ('pcan', 'PCAN_USBBUS1'), ('kvaser', 0), ('kvaser', 1),
                                    ('ixxat', 0)]:
             try:
                 self._can_bus = can.ThreadSafeBus(interface=interface, channel=channel, bitrate=self.bitrate)
-                print("Interface: ", interface, " Channel: ", channel, " can setup")
                 break
-            except (OSError, can.CanError, NameError, ImportError):
+            except (OSError, can.CanError, NameError):
                 pass
         else:
             raise Exception('No CAN-Bus interface was found')
         self.ch = self._can_bus
+        print("CAN-nterface: ", interface, " and channel: ", channel, " chosen.")
 
     def add_can_msg_callback(self):
         pass
@@ -236,23 +237,26 @@ if __name__ == '__main__':
     print_hi(f'Min: {hex(min(idList))}, Max: {hex(max(idList))}')
     if os.path.isdir("data"):
         filename = "data/" + time.strftime("%Y%m%d") + "_discoveredSensors.log"
-        print("Log printing")
+        print("Logging")
         logging.basicConfig(filename=filename, level=logging.INFO)
-        #with open(filename, 'a', newline='') as csvfile:
-        #    loggwriter = csv.writer(csvfile)
         logging.info(["Time", "msgID", "subfunction", "value"])
     else:
-        print("test failed")
+        print("No folder to keep log data in, no logs will be written")
+
     bus = CanInterface(0x11)
+    if os.path.isdir("data"):
+        b_filename = "data/logger_CAB500.csv"
+    else:
+        b_filename = "logger_CAB500.csv"
     logger = can.SizedRotatingLogger(
-        base_filename="data/logger_CAB500.csv",
+        base_filename=b_filename,
         max_bytes=1 * 1024 ** 2,  # =2MB
         append=True
     )
     listeners: List[MessageRecipient] = [
         receive_can_data,  # Callback function
         receive_can_data_single,
-        logger,  # Regular Listener object
+        logger  # Regular Listener object
     ]
 
     notifier = can.Notifier(bus.ch, listeners)
@@ -277,13 +281,6 @@ if __name__ == '__main__':
             receivedReadDatabyIDDone = False
         wait = 0
 
-    # if receivedReadDatabyIDDone:
-    #    print_hi('Done, udsClientID: ' + hex(udsClientID) + ' , udsServerID: ' +
-    #             hex(udsServerID) + ' and cab500IpID: ' + hex(cab500IpID))
-
-    # writeDatabyIdentifier(udsClientID, debugging)
-
     time.sleep(0.01)
-    # ecuResetService(udsClientID, debugging)
     bus.close_bus()
     print_hi('Stop program')
