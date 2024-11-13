@@ -127,7 +127,7 @@ class CanInterface:
         # self.accept_virtual = True # Only for kvaser interface as far as I know
 
         # Try to find a CAN-Bus interface
-        for interface, channel in [('socketcan', 'can0'), ('pcan', 'PCAN_USBBUS1'), ('kvaser', 0), ('kvaser', 1),
+        for interface, channel in [('socketcan', 'can5'), ('pcan', 'PCAN_USBBUS1'),
                                    ('ixxat', 0)]:
             try:
                 self._can_bus = can.ThreadSafeBus(interface=interface, channel=channel, bitrate=self.bitrate)
@@ -156,34 +156,34 @@ def receive_can_data(msg):
     # print(f"Recieved data All: {msg.data}, id: {hex(msg.arbitration_id)}")
     if msg.is_rx == True and msg.dlc == 8:
         if debugging:
-            print("Message recieved and dlc=8")
-            print(msg.data)
-        if msg.data[0] == sense.CAB500.firstMessage:  # First frame of message
+            # print("Message recieved and dlc=8")
+            # print(msg.data)
+          if msg.data[0] == sense.CAB500.firstMessage:  # First frame of message
             # print("Message recieved and dlc=8 and first msg")
             # print(msg.data)
             if msg.data[1] == sense.CAB500.nineUsableData:
                 if msg.data[2] == sense.CAB500.posResponseRead:
-                    # print(f"Positive response")
-                    if int.from_bytes(msg.data[3:5]) == sense.CAB500.subf_CAN_ID:
+                    print(f"Positive response")
+                    if int.from_bytes(msg.data[3:5],'big') == sense.CAB500.subf_CAN_ID:
                         receivedCorrectMsg = True
-                        # print("correct msg state: ", receivedCorrectMsg)
+                        print("correct msg state: ", receivedCorrectMsg)
                         flowControl(id, debugging)
-                        cab500IpID = int.from_bytes(msg.data[5:7])
-                        # print("flowcontrol is sent: ", id)
+                        cab500IpID = int.from_bytes(msg.data[5:7],'big')
+                        print("flowcontrol is sent: ", id)
                         udsClientID = msg.data[7]
                 else:
                     print("Negative response, wrong format" + msg.data)
 
         elif msg.data[0] == sense.CAB500.secondMessage:
             # print("Second message received")
-            udsClientID = int.from_bytes([udsClientID, msg.data[1]])
-            udsServerID = int.from_bytes(msg.data[2:4])
+            udsClientID = int.from_bytes([udsClientID, msg.data[1]],'big')
+            udsServerID = int.from_bytes(msg.data[2:4],'big')
             printInfoCAB500()
             receivedReadDatabyIDDone = True
         elif msg.data[0] == sense.CAB500.flowControl and \
                 int.from_bytes([msg.data[1], msg.data[2], msg.data[3],
                                 msg.data[4], msg.data[5], msg.data[6],
-                                msg.data[7]]) == 0:
+                                msg.data[7]],'big') == 0:
             print("flow control message received")
             writeDatabyIdentifier2nd(udsClientID, debugging)
         elif msg.data[0] == sense.CAB500.SINGLE_FRAME_3_BYTE and msg.arbitration_id == udsServerID:

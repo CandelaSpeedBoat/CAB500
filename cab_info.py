@@ -146,15 +146,15 @@ def writeDatasubFunctionFramePeriod(msg_id, frame_frequency, debug):
 
 class CanInterface:
 
-    def __init__(self, node_id, channel='can0', bustype='socketcan', bitrate='500000'):
+    def __init__(self, node_id, channel='can5', bustype='socketcan', bitrate='500000'):
         self.node_id = node_id
         self.channel = channel
         self.bustype = bustype
         self.bitrate = bitrate
-        self.accept_virtual = True
+        #self.accept_virtual = True
 
         # Try to find a CAN-Bus interface
-        for interface, channel in [('kvaser', 0), ('kvaser', 1), ('socketcan', 'can0'), ('pcan', 'PCAN_USBBUS1'),
+        for interface, channel in [('socketcan', 'can5'), ('pcan', 'PCAN_USBBUS1'),
                                    ('ixxat', 0)]:
             try:
                 self._can_bus = can.ThreadSafeBus(interface=interface, channel=channel, bitrate=self.bitrate)
@@ -190,11 +190,11 @@ def receive_can_data(msg):
             if msg.data[1] == sense.CAB500.nineUsableData:
                 if msg.data[2] == sense.CAB500.posResponseRead:
                     # print(f"Positive response")
-                    if int.from_bytes(msg.data[3:5]) == sense.CAB500.subf_CAN_ID:
+                    if int.from_bytes(msg.data[3:5],'big') == sense.CAB500.subf_CAN_ID:
                         receivedCorrectMsg = True
                         # print("correct msg state: ", receivedCorrectMsg)
                         flowControl(msgID, debugging)
-                        cab500IpID = int.from_bytes(msg.data[5:7])
+                        cab500IpID = int.from_bytes(msg.data[5:7],'big')
                         # print("flowcontrol is sent: ", id)
                         udsClientID = msg.data[7]
                 else:
@@ -202,14 +202,14 @@ def receive_can_data(msg):
 
         elif msg.data[0] == sense.CAB500.secondMessage:
             # print("Second message received")
-            udsClientID = int.from_bytes([udsClientID, msg.data[1]])
-            udsServerID = int.from_bytes(msg.data[2:4])
+            udsClientID = int.from_bytes([udsClientID, msg.data[1]],'big')
+            udsServerID = int.from_bytes(msg.data[2:4],'big')
             printInfoCAB500()
             receivedReadDatabyIDDone = True
         elif msg.data[0] == sense.CAB500.flowControl and \
                 int.from_bytes([msg.data[1], msg.data[2], msg.data[3],
                                 msg.data[4], msg.data[5], msg.data[6],
-                                msg.data[7]]) == 0:
+                                msg.data[7]],'big') == 0:
             # print("flow control message received")
             writeDatabyIdentifier2nd(udsClientID, debugging)
         elif msg.data[0] == sense.CAB500.SINGLE_FRAME_3_BYTE and msg.arbitration_id == udsServerID:
